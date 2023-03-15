@@ -8,8 +8,9 @@ namespace cv
 {
 
   // reference: https://www.jianshu.com/p/b3e9fb2ad0dc
-  // article: <A Novel Parametrization of the Perspective-Three-Point Problem for
-  //           a Direct Computation of Absolute Camera Position and Orientation>
+  // article: <EPnP: An Accurate O(n) Solution to the PnP Problem>
+  // You can find it in folder "reference", my repo "example".
+  // "equation 5" in my comment means equation 5 in this article
   class epnp
   {
   public:
@@ -52,13 +53,16 @@ namespace cv
     // convert coordinate from using common basis to using basis that consist of control points
     void compute_barycentric_coordinates(void);
     // (out M, in row, in new coordinate, in u, in v): uv are pixel coordinate;
-    // project new coordinates to camera
+    // project a point to camera
     void fill_M(CvMat *M, const int row, const double *alphas, const double u, const double v);
+    // 控制点在摄像头参考坐标下的坐标
     void compute_ccs(const double *betas, const double *ut);
+    // 3D参考点在摄像头参考坐标系下的坐标 = 3D参考点在控制点坐标系下的坐标 * 控制点在摄像头参考坐标下的坐标
     void compute_pcs(void);
-
+    //
     void solve_for_sign(void);
 
+    // approximate value
     void find_betas_approx_1(const CvMat *L_6x10, const CvMat *Rho, double *betas);
     void find_betas_approx_2(const CvMat *L_6x10, const CvMat *Rho, double *betas);
     void find_betas_approx_3(const CvMat *L_6x10, const CvMat *Rho, double *betas);
@@ -67,7 +71,7 @@ namespace cv
     double dot(const double *v1, const double *v2);
     double dist2(const double *p1, const double *p2);
 
-    void compute_rho(double *rho);
+    void compute_rho(double *rho); // distances between control points in world frame
     void compute_L_6x10(const double *ut, double *l_6x10);
 
     void gauss_newton(const CvMat *L_6x10, const CvMat *Rho, double current_betas[4]);
@@ -81,10 +85,10 @@ namespace cv
 
     double uc, vc, fu, fv; // cx; cy; fx; fy
 
-    std::vector<double> pws;    // store all obj pts;
-    std::vector<double> us;     // store all pixel coordinate;
-    std::vector<double> alphas; // coordinates of pw in the set of basis from control points;
-    std::vector<double> pcs;
+    std::vector<double> pws;       // store all obj pts;
+    std::vector<double> us;        // store all pixel coordinate;
+    std::vector<double> alphas;    // coordinates of pw in the set of basis from control points;
+    std::vector<double> pcs;       // 3D参考点在摄像头参考坐标系下的坐标
     int number_of_correspondences; // num of obj-img pairs
 
     double cws[4][3]; // control points in world ;

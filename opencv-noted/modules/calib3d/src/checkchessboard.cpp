@@ -49,13 +49,13 @@
 using namespace cv;
 using namespace std;
 
-static void icvGetQuadrangleHypotheses(const std::vector<std::vector< cv::Point > > & contours, const std::vector< cv::Vec4i > & hierarchy, std::vector<std::pair<float, int> >& quads, int class_id)
+static void icvGetQuadrangleHypotheses(const std::vector<std::vector<cv::Point>> &contours, const std::vector<cv::Vec4i> &hierarchy, std::vector<std::pair<float, int>> &quads, int class_id)
 {
     const float min_aspect_ratio = 0.3f;
     const float max_aspect_ratio = 3.0f;
     const float min_box_size = 10.0f;
 
-    typedef std::vector< std::vector< cv::Point > >::const_iterator iter_t;
+    typedef std::vector<std::vector<cv::Point>>::const_iterator iter_t;
     iter_t i;
     for (i = contours.begin(); i != contours.end(); ++i)
     {
@@ -63,17 +63,17 @@ static void icvGetQuadrangleHypotheses(const std::vector<std::vector< cv::Point 
         if (hierarchy.at(idx)[3] != -1)
             continue; // skip holes
 
-        const std::vector< cv::Point > & c = *i;
+        const std::vector<cv::Point> &c = *i;
         cv::RotatedRect box = cv::minAreaRect(c);
 
         float box_size = MAX(box.size.width, box.size.height);
-        if(box_size < min_box_size)
+        if (box_size < min_box_size)
         {
             continue;
         }
 
-        float aspect_ratio = box.size.width/MAX(box.size.height, 1);
-        if(aspect_ratio < min_aspect_ratio || aspect_ratio > max_aspect_ratio)
+        float aspect_ratio = box.size.width / MAX(box.size.height, 1);
+        if (aspect_ratio < min_aspect_ratio || aspect_ratio > max_aspect_ratio)
         {
             continue;
         }
@@ -82,69 +82,69 @@ static void icvGetQuadrangleHypotheses(const std::vector<std::vector< cv::Point 
     }
 }
 
-static void countClasses(const std::vector<std::pair<float, int> >& pairs, size_t idx1, size_t idx2, std::vector<int>& counts)
+static void countClasses(const std::vector<std::pair<float, int>> &pairs, size_t idx1, size_t idx2, std::vector<int> &counts)
 {
     counts.assign(2, 0);
-    for(size_t i = idx1; i != idx2; i++)
+    for (size_t i = idx1; i != idx2; i++)
     {
         counts[pairs[i].second]++;
     }
 }
 
-inline bool less_pred(const std::pair<float, int>& p1, const std::pair<float, int>& p2)
+inline bool less_pred(const std::pair<float, int> &p1, const std::pair<float, int> &p2)
 {
     return p1.first < p2.first;
 }
 
-static void fillQuads(Mat & white, Mat & black, double white_thresh, double black_thresh, vector<pair<float, int> > & quads)
+static void fillQuads(Mat &white, Mat &black, double white_thresh, double black_thresh, vector<pair<float, int>> &quads)
 {
     Mat thresh;
     {
-        vector< vector<Point> > contours;
-        vector< Vec4i > hierarchy;
+        vector<vector<Point>> contours;
+        vector<Vec4i> hierarchy;
         threshold(white, thresh, white_thresh, 255, THRESH_BINARY);
         findContours(thresh, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_SIMPLE);
         icvGetQuadrangleHypotheses(contours, hierarchy, quads, 1);
     }
 
     {
-        vector< vector<Point> > contours;
-        vector< Vec4i > hierarchy;
+        vector<vector<Point>> contours;
+        vector<Vec4i> hierarchy;
         threshold(black, thresh, black_thresh, 255, THRESH_BINARY_INV);
         findContours(thresh, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_SIMPLE);
         icvGetQuadrangleHypotheses(contours, hierarchy, quads, 0);
     }
 }
 
-static bool checkQuads(vector<pair<float, int> > & quads, const cv::Size & size)
+static bool checkQuads(vector<pair<float, int>> &quads, const cv::Size &size)
 {
-    const size_t min_quads_count = size.width*size.height/2;
+    const size_t min_quads_count = size.width * size.height / 2;
     std::sort(quads.begin(), quads.end(), less_pred);
 
     // now check if there are many hypotheses with similar sizes
     // do this by floodfill-style algorithm
     const float size_rel_dev = 0.4f;
 
-    for(size_t i = 0; i < quads.size(); i++)
+    for (size_t i = 0; i < quads.size(); i++)
     {
         size_t j = i + 1;
-        for(; j < quads.size(); j++)
+        for (; j < quads.size(); j++)
         {
-            if(quads[j].first/quads[i].first > 1.0f + size_rel_dev)
+            if (quads[j].first / quads[i].first > 1.0f + size_rel_dev)
             {
                 break;
             }
         }
 
-        if(j + 1 > min_quads_count + i)
+        if (j + 1 > min_quads_count + i)
         {
             // check the number of black and white squares
             std::vector<int> counts;
             countClasses(quads, i, j, counts);
-            const int black_count = cvRound(ceil(size.width/2.0)*ceil(size.height/2.0));
-            const int white_count = cvRound(floor(size.width/2.0)*floor(size.height/2.0));
-            if(counts[0] < black_count*0.75 ||
-               counts[1] < white_count*0.75)
+            const int black_count = cvRound(ceil(size.width / 2.0) * ceil(size.height / 2.0));
+            const int white_count = cvRound(floor(size.width / 2.0) * floor(size.height / 2.0));
+            if (counts[0] < black_count * 0.75 ||
+                counts[1] < white_count * 0.75)
             {
                 continue;
             }
@@ -160,7 +160,7 @@ static bool checkQuads(vector<pair<float, int> > & quads, const cv::Size & size)
 // - size: chessboard size
 // Returns 1 if a chessboard can be in this image and findChessboardCorners should be called,
 // 0 if there is no chessboard, -1 in case of error
-int cvCheckChessboard(IplImage* src, CvSize size)
+int cvCheckChessboard(IplImage *src, CvSize size)
 {
     cv::Mat img = cv::cvarrToMat(src);
     return (int)cv::checkChessboard(img, size);
@@ -182,9 +182,9 @@ bool cv::checkChessboard(InputArray _img, Size size)
     dilate(img, black, Mat(), Point(-1, -1), erosion_count);
 
     bool result = false;
-    for(float thresh_level = black_level; thresh_level < white_level && !result; thresh_level += 20.0f)
+    for (float thresh_level = black_level; thresh_level < white_level && !result; thresh_level += 20.0f)
     {
-        vector<pair<float, int> > quads;
+        vector<pair<float, int>> quads;
         fillQuads(white, black, thresh_level + black_white_gap, thresh_level, quads);
         if (checkQuads(quads, size))
             result = true;
@@ -198,7 +198,7 @@ bool cv::checkChessboard(InputArray _img, Size size)
 // - size: chessboard size
 // Returns 1 if a chessboard can be in this image and findChessboardCorners should be called,
 // 0 if there is no chessboard, -1 in case of error
-int checkChessboardBinary(const cv::Mat & img, const cv::Size & size)
+int checkChessboardBinary(const cv::Mat &img, const cv::Size &size)
 {
     CV_Assert(img.channels() == 1 && img.depth() == CV_8U);
 
@@ -206,18 +206,18 @@ int checkChessboardBinary(const cv::Mat & img, const cv::Size & size)
     Mat black = img.clone();
 
     int result = 0;
-    for ( int erosion_count = 0; erosion_count <= 3; erosion_count++ )
+    for (int erosion_count = 0; erosion_count <= 3; erosion_count++)
     {
-        if ( 1 == result )
+        if (1 == result)
             break;
 
-        if ( 0 != erosion_count ) // first iteration keeps original images
+        if (0 != erosion_count) // first iteration keeps original images
         {
             erode(white, white, Mat(), Point(-1, -1), 1);
             dilate(black, black, Mat(), Point(-1, -1), 1);
         }
 
-        vector<pair<float, int> > quads;
+        vector<pair<float, int>> quads;
         fillQuads(white, black, 128, 128, quads);
         if (checkQuads(quads, size))
             result = 1;
